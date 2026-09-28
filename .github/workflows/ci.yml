@@ -42,3 +42,20 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -v
+    
+     docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t retail-demand-api:${{ github.sha }} .
+
+      - name: Verify Docker image
+        run: |
+          docker image inspect retail-demand-api:${{ github.sha }}
