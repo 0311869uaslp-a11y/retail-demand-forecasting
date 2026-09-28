@@ -1,0 +1,54 @@
+SELECT COUNT(*)
+FROM sales;
+
+913000
+
+SELECT *
+FROM sales
+LIMIT 10;
+
+Comprobaciones:
+
+SELECT
+    MIN(date) AS start_date,
+    MAX(date) AS end_date,
+    COUNT(DISTINCT store) AS stores,
+    COUNT(DISTINCT item) AS items,
+    COUNT(*) AS observations
+FROM sales;
+
+Consultas:
+
+¿Qué tiendas generan mayor volumen de ventas?
+
+SELECT
+    store,
+    SUM(sales) AS total_sales,
+    ROUND(AVG(sales), 2) AS avg_daily_sales
+FROM sales
+GROUP BY store
+ORDER BY total_sales DESC;
+
+Lo mismo por producto:
+What are our highest-selling products?
+
+SELECT
+    item,
+    SUM(sales) AS total_sales,
+    ROUND(AVG(sales), 2) AS avg_sales
+FROM sales
+GROUP BY item
+ORDER BY total_sales DESC
+LIMIT 10;
+
+Ventas anuales
+
+SELECT
+    EXTRACT(YEAR FROM date) AS year,
+    SUM(sales) AS total_sales
+FROM sales
+GROUP BY EXTRACT(YEAR FROM date)
+ORDER BY year;
+
+Estudiar crecimiento
+
