@@ -1,6 +1,4 @@
 -r requirements.txt
+
 pytest
 httpx
-matplotlib
-jupyter
-ipykernel
