@@ -1,5 +1,9 @@
 name: CI
 
+permissions:
+  contents: read
+  packages: write
+
 on:
   push:
     branches:
@@ -59,3 +63,35 @@ jobs:
       - name: Verify Docker image
         run: |
           docker image inspect retail-demand-api:${{ github.sha }}
+
+  publish:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - docker-build
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ghcr.io/${{ github.repository_owner }}/retail-demand-forecasting:latest \
+            -t ghcr.io/${{ github.repository_owner }}/retail-demand-forecasting:${{ github.sha }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/retail-demand-forecasting:latest
+          docker push ghcr.io/${{ github.repository_owner }}/retail-demand-forecasting:${{ github.sha }}
