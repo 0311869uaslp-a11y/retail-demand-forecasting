@@ -1,8 +1,18 @@
 # Retail Demand Forecasting & Inventory Intelligence
 
-End-to-end Machine Learning project for **next-day retail demand forecasting**, covering the complete workflow from exploratory analysis and SQL to model deployment, CI/CD, monitoring, and data drift detection.
+![Python](https://img.shields.io/badge/Python-3.13-blue)
+![XGBoost](https://img.shields.io/badge/ML-XGBoost-orange)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-green)
+![Docker](https://img.shields.io/badge/Container-Docker-blue)
+![Azure](https://img.shields.io/badge/Cloud-Azure-blue)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-black)
+![Tests](https://img.shields.io/badge/tests-7%20passed-brightgreen)
 
-The system uses historical retail sales to predict demand for individual **store-item combinations**. Multiple approaches were evaluated using time-aware validation, with **XGBoost reducing MAE by 34.6% compared with a seasonal-naive baseline on the final untouched holdout set**.
+End-to-end Machine Learning project for **next-day retail demand forecasting**, covering the complete workflow from exploratory data analysis and advanced SQL to model training, temporal validation, REST API development, automated testing, containerization, CI/CD, monitoring, drift detection, and cloud deployment on Microsoft Azure.
+
+The system uses historical retail sales to predict demand for individual **store-item combinations**. Multiple approaches were evaluated using leakage-safe, time-aware validation, with **XGBoost reducing MAE by 34.6% compared with a seasonal-naive baseline on the final untouched Q4 2017 holdout set**.
+
+The trained model is productionized through **FastAPI and Docker**, automatically tested and published through **GitHub Actions and GitHub Container Registry (GHCR)**, and deployed as a publicly accessible HTTPS inference service using **Microsoft Azure Container Apps**.
 
 ---
 
@@ -15,13 +25,13 @@ The system uses historical retail sales to predict demand for individual **store
 
 **Final MAE improvement: 34.6%**
 
-The final evaluation was performed on an untouched **Q4 2017 holdout set**.
+The final evaluation was performed on an untouched **Q4 2017 temporal holdout set**.
 
 ---
 
 ## Project Overview
 
-The objective is to simulate a production-oriented retail demand forecasting workflow.
+The objective is to simulate a production-oriented retail demand forecasting workflow that goes beyond model experimentation and covers the main stages required to transform a predictive model into a deployable ML service.
 
 The project includes:
 
@@ -33,12 +43,15 @@ The project includes:
 - Random Forest modeling
 - XGBoost modeling
 - Time-based cross-validation
-- Final holdout evaluation
+- Final temporal holdout evaluation
 - FastAPI inference service
 - Automated testing with Pytest
 - Docker containerization
 - GitHub Actions CI pipeline
 - GitHub Container Registry delivery
+- Microsoft Azure Container Apps deployment
+- Public HTTPS inference endpoint
+- Scale-to-zero cloud configuration
 - Inference logging
 - Basic data drift detection
 - Interactive Streamlit dashboard
@@ -92,12 +105,22 @@ The project includes:
                          GitHub Container Registry
                                       |
                                       v
-                         Production Inference
+                         Microsoft Azure
+                         Container Apps
+                                      |
+                                      v
+                          Public HTTPS API
+                           /          \
+                          v            v
+                    GET /health    POST /predict
+                                      |
+                                      v
+                              XGBoost Inference
                                       |
                          +------------+------------+
                          |                         |
                          v                         v
-                  Prediction Logs          Drift Detection
+                  Prediction Logs           Drift Detection
 ```
 
 ---
@@ -150,7 +173,7 @@ lag_14
 lag_28
 ```
 
-These capture recent and seasonal demand behavior.
+These variables capture recent and seasonal demand behavior.
 
 ### Rolling Statistics
 
@@ -176,9 +199,9 @@ This ensures that the current day's target is never included in the feature calc
 
 ## Validation Strategy
 
-Random train/test splitting is inappropriate for forecasting because it allows future observations to influence training.
+Random train/test splitting is inappropriate for forecasting because it can allow future observations to influence model development.
 
-This project therefore uses chronological validation.
+This project therefore uses **chronological validation**.
 
 ### Development Split
 
@@ -193,13 +216,15 @@ Final Test
 date >= 2017-10-01
 ```
 
-The final Q4 2017 period remained untouched until model selection and development were completed.
+The final **Q4 2017** period remained untouched until model selection and development were completed.
+
+This provides a more realistic estimate of model performance on future observations.
 
 ---
 
 ## Temporal Cross-Validation
 
-An expanding-window validation strategy was also implemented.
+An **expanding-window validation strategy** was also implemented to evaluate model stability across different temporal periods.
 
 | Fold | Baseline MAE | XGBoost MAE | Improvement |
 |---|---:|---:|---:|
@@ -207,9 +232,9 @@ An expanding-window validation strategy was also implemented.
 | 2016 Q1 | 7.494 | 5.285 | 29.5% |
 | 2017 Q1 | 7.680 | 5.363 | 30.2% |
 
-XGBoost consistently outperformed the seasonal baseline across all temporal folds.
+XGBoost consistently outperformed the seasonal baseline across all evaluated temporal folds.
 
-This helps verify that the improvement is not dependent on a single validation period.
+This helps verify that the observed improvement is not dependent on a single validation period.
 
 ---
 
@@ -275,7 +300,9 @@ WAPE  = 10.86%
 
 ### Final Result
 
-**34.6% reduction in MAE compared with the seasonal baseline.**
+**34.6% reduction in MAE compared with the seasonal-naive baseline.**
+
+The final model also reduced RMSE from **12.051 to 7.677**, demonstrating a substantial improvement over the weekly seasonal benchmark on previously unseen future data.
 
 ---
 
@@ -287,7 +314,11 @@ Lag and rolling features use historical sales values that are assumed to be avai
 
 This is intentionally different from recursive multi-step forecasting.
 
-A future extension could support multi-horizon forecasting using recursive predictions, direct horizon-specific models, or sequence models.
+The current architecture is therefore designed to answer a question such as:
+
+> Given the latest historical demand information for a store-item combination, what is the expected demand for the next day?
+
+Future versions could support multi-horizon forecasting using recursive predictions, direct horizon-specific models, or sequence-based forecasting approaches.
 
 ---
 
@@ -321,7 +352,9 @@ This part of the project demonstrates analytical SQL independently from the Pyth
 
 ## REST API
 
-The trained model is exposed through a **FastAPI** service.
+The trained XGBoost model is exposed through a **FastAPI REST service**.
+
+The serialized model is loaded when the API starts and incoming prediction requests are validated using **Pydantic**.
 
 ### Health Check
 
@@ -344,7 +377,7 @@ Example response:
 POST /predict
 ```
 
-The endpoint validates incoming features using Pydantic and returns a non-negative demand prediction.
+The endpoint validates incoming features and returns a non-negative demand prediction.
 
 Example response:
 
@@ -354,7 +387,7 @@ Example response:
 }
 ```
 
-Interactive API documentation is automatically available through FastAPI Swagger UI.
+Interactive API documentation is automatically available through **FastAPI Swagger UI**.
 
 ---
 
@@ -381,11 +414,13 @@ Current test suite:
 7 passed
 ```
 
+The tests are also executed automatically through GitHub Actions before successful container builds are published.
+
 ---
 
 ## Docker
 
-The inference API is containerized with Docker.
+The inference API is containerized with **Docker**, providing a reproducible environment for local and cloud execution.
 
 Build locally:
 
@@ -405,11 +440,23 @@ The API is then available at:
 http://localhost:8000
 ```
 
+Health check:
+
+```text
+http://localhost:8000/health
+```
+
+Interactive documentation:
+
+```text
+http://localhost:8000/docs
+```
+
 ---
 
 ## CI/CD
 
-GitHub Actions automatically executes the pipeline when code is pushed to the main branch.
+GitHub Actions automatically executes the CI pipeline when code is pushed to the main branch.
 
 ```text
 Git Push
@@ -437,11 +484,141 @@ docker pull ghcr.io/0311869uaslp-a11y/retail-demand-forecasting:latest
 
 This provides a reproducible and version-controlled delivery workflow for the ML inference service.
 
+The CI pipeline automatically validates the application, builds the Docker image, and publishes successful builds to GHCR. The published container image is then used as the deployment artifact for the **Azure Container Apps** inference service.
+
+> **Note:** The current CI pipeline automatically tests, builds, and publishes the container image. Deployment from GHCR to Azure Container Apps is currently performed separately rather than as an automated continuous-deployment stage.
+
+---
+
+## Cloud Deployment — Microsoft Azure
+
+The containerized inference service is deployed to **Microsoft Azure Container Apps**.
+
+The production container image is stored in **GitHub Container Registry (GHCR)** and deployed to Azure as a containerized FastAPI inference service running the trained XGBoost forecasting model.
+
+### Deployment Architecture
+
+```text
+GitHub Repository
+       |
+       v
+GitHub Actions
+       |
+       +------> Automated Tests (Pytest)
+       |
+       v
+Docker Build
+       |
+       v
+GitHub Container Registry
+       |
+       v
+Azure Container Apps
+       |
+       v
+FastAPI + XGBoost
+       |
+       v
+Public HTTPS API
+```
+
+### Live API
+
+The deployed inference service is available at:
+
+**API**
+
+https://retail-demand-api.lemonrock-804516f2.eastus.azurecontainerapps.io
+
+**Health Check**
+
+https://retail-demand-api.lemonrock-804516f2.eastus.azurecontainerapps.io/health
+
+**Interactive API Documentation**
+
+https://retail-demand-api.lemonrock-804516f2.eastus.azurecontainerapps.io/docs
+
+> The Azure Container App is configured with scale-to-zero capability. The first request after a period of inactivity may therefore experience a short cold-start delay.
+
+### Production Health Check
+
+```http
+GET /health
+```
+
+Example response from the deployed Azure service:
+
+```json
+{
+  "status": "healthy",
+  "model_loaded": true
+}
+```
+
+This confirms that the cloud container is running and the serialized XGBoost model has been loaded successfully.
+
+### Cloud Inference
+
+Predictions are generated through:
+
+```http
+POST /predict
+```
+
+Example request:
+
+```json
+{
+  "store": 1,
+  "item": 1,
+  "year": 2017,
+  "month": 10,
+  "day": 1,
+  "day_of_week": 6,
+  "week_of_year": 39,
+  "quarter": 4,
+  "is_weekend": 1,
+  "lag_1": 22.0,
+  "lag_7": 24.0,
+  "lag_14": 21.0,
+  "lag_28": 23.0,
+  "rolling_mean_7": 23.4,
+  "rolling_mean_14": 22.8,
+  "rolling_mean_28": 23.1,
+  "rolling_std_7": 4.2,
+  "rolling_std_28": 5.1
+}
+```
+
+Example response obtained from the deployed Azure service:
+
+```json
+{
+  "predicted_sales": 26.25
+}
+```
+
+This validates the complete inference path from an external HTTPS request to the containerized FastAPI application and trained XGBoost model running on Microsoft Azure.
+
+### Cloud Configuration
+
+The Azure deployment uses:
+
+- **Microsoft Azure Container Apps**
+- External HTTPS ingress
+- Container image hosted on GHCR
+- FastAPI application on port `8000`
+- Scale-to-zero configuration
+- Minimum replicas: `0`
+- Maximum replicas: `1`
+
+The scale-to-zero configuration reduces resource usage when the portfolio API is inactive while keeping the service publicly accessible when needed.
+
 ---
 
 ## Model Monitoring
 
-Production inference requests are logged using JSON Lines.
+Production inference requests are logged using **JSON Lines (JSONL)**.
 
 Each record includes:
 
@@ -468,7 +645,9 @@ Example:
 }
 ```
 
-This creates an inference history that can later be combined with observed sales to monitor model performance.
+This creates an inference history that can later be combined with observed sales to monitor prediction performance.
+
+The current monitoring implementation focuses on **inference logging and feature-distribution monitoring** rather than a full production observability platform.
 
 ---
 
@@ -496,13 +675,22 @@ The current implementation calculates normalized mean shift:
 
 A threshold is used to flag substantial distribution changes.
 
-This is intentionally a lightweight monitoring implementation. A production extension could incorporate PSI, Kolmogorov-Smirnov tests, Evidently, alerting, and automated retraining policies.
+This provides a simple mechanism for detecting potential differences between the historical training distribution and incoming inference data.
+
+The current implementation is intentionally lightweight. A production extension could incorporate:
+
+- Population Stability Index (PSI)
+- Kolmogorov-Smirnov tests
+- Evidently
+- Automated alerts
+- Prediction-performance monitoring
+- Automated retraining policies
 
 ---
 
 ## Interactive Dashboard
 
-A Streamlit dashboard provides a business-oriented view of model performance.
+A **Streamlit dashboard** provides a business-oriented view of model performance.
 
 It includes:
 
@@ -521,6 +709,8 @@ Run locally with:
 ```bash
 streamlit run dashboard/app.py
 ```
+
+The dashboard provides a visual layer for exploring model results independently from the REST inference API.
 
 ---
 
@@ -574,23 +764,27 @@ retail-demand-forecasting/
 
 ## Tech Stack
 
-**Machine Learning**
+### Machine Learning
 
 `Python` · `pandas` · `NumPy` · `scikit-learn` · `XGBoost`
 
-**Data & Analytics**
+### Data & Analytics
 
 `PostgreSQL` · `SQL` · `Time Series` · `Feature Engineering`
 
-**Backend & Deployment**
+### Backend
 
-`FastAPI` · `Pydantic` · `Docker`
+`FastAPI` · `Pydantic`
 
-**MLOps**
+### Cloud & Containerization
 
-`Pytest` · `GitHub Actions` · `GitHub Container Registry` · `Model Monitoring` · `Data Drift Detection`
+`Microsoft Azure` · `Azure Container Apps` · `Docker` · `GitHub Container Registry`
 
-**Visualization**
+### MLOps & Testing
+
+`Pytest` · `GitHub Actions` · `CI/CD` · `Model Serialization` · `Inference Logging` · `Data Drift Detection`
+
+### Visualization
 
 `Matplotlib` · `Streamlit`
 
@@ -609,7 +803,11 @@ The dataset does not contain several variables that would normally influence ret
 
 Therefore, the project focuses primarily on extracting predictive information from historical demand patterns.
 
-The current API also expects engineered lag and rolling features as input. In a production architecture, these features would typically be generated by an upstream feature pipeline or retrieved from a feature store.
+The current API also expects engineered lag and rolling features as input.
+
+In a production architecture, these features would typically be generated automatically by an upstream feature pipeline or retrieved from a feature store rather than manually supplied by an API consumer.
+
+The current model is also limited to **one-step-ahead forecasting** and does not directly generate a multi-day demand trajectory.
 
 ---
 
@@ -618,14 +816,79 @@ The current API also expects engineered lag and rolling features as input. In a 
 Potential extensions include:
 
 - Automated model retraining
-- Prediction performance monitoring after actual demand becomes available
-- PSI / statistical drift tests
-- MLflow model registry
-- Cloud deployment
+- Automated continuous deployment from GHCR to Azure Container Apps
+- Prediction-performance monitoring after actual demand becomes available
+- PSI and statistical drift tests
+- MLflow experiment tracking and model registry
+- Automated feature pipeline or feature store
 - Multi-step demand forecasting
 - Promotion and price features
+- Holiday and event features
 - Inventory optimization and reorder-point recommendations
 - Deep-learning forecasting experiments
+- Automated cloud monitoring and alerting
+
+---
+
+## Reproducibility
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/0311869uaslp-a11y/retail-demand-forecasting.git
+cd retail-demand-forecasting
+```
+
+### 2. Create a virtual environment
+
+```bash
+python -m venv .venv
+```
+
+### 3. Activate the environment
+
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+### 4. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Run tests
+
+```bash
+pytest -v
+```
+
+### 6. Run the API locally
+
+```bash
+uvicorn src.api:app --host 0.0.0.0 --port 8000
+```
+
+### 7. Open the API documentation
+
+```text
+http://localhost:8000/docs
+```
+
+Alternatively, the application can be executed using Docker:
+
+```bash
+docker build -t retail-demand-api .
+docker run -p 8000:8000 retail-demand-api
+```
 
 ---
 
@@ -633,6 +896,12 @@ Potential extensions include:
 
 **José Luis Romero Vázquez**
 
-Electronic Engineer with an international double Master's background in Electronic Engineering, Computer Networks and Telecommunications, with experience in Machine Learning, IoT, data analysis, research, and software development.
+Electronics Engineer and Data Scientist with international graduate education in Electronic Engineering, Telecommunications, and Computer Networks across Mexico and France, with applied experience in Machine Learning, time-series forecasting, IoT analytics, research, software development, and cloud-based ML deployment.
 
-Mexico · France · Lithuania
+Professional and research experience across **Mexico, France, and Lithuania**.
+
+**LinkedIn:**  
+https://www.linkedin.com/in/jose-luis-romero-vazquez-486569209
+
+**GitHub:**  
+https://github.com/0311869uaslp-a11y
