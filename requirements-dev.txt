@@ -4,3 +4,4 @@ httpx
 matplotlib
 jupyter
 ipykernel
+streamlit
